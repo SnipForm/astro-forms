@@ -22,7 +22,8 @@ export type SimpleValidationRule =
   | "ip"
   | "ipv4"
   | "ipv6"
-  | "uuid";
+  | "uuid"
+  | "phone";
 
 /** Parameterized validation rules */
 export type ParameterizedValidationRule =
@@ -44,7 +45,8 @@ export type ParameterizedValidationRule =
   | `lt[${string}]`
   | `lte[${string}]`
   | `regex[${string}]`
-  | `not_regex[${string}]`;
+  | `not_regex[${string}]`
+  | `phone[${string}]`;
 
 /** All supported SnipForm validation rules */
 export type ValidationRule = SimpleValidationRule | ParameterizedValidationRule;
