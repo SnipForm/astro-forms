@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `phone` rule: `phone`, `phone[za]`, `phone[international,za]`, `phone[mobile]`, `phone[lenient]` and more, validated against Google's libphonenumber data. Needs SnipForm's server `phone` rule (propaganistas/laravel-phone). The browser check uses libphonenumber-js, loaded the first time a field with a `phone` rule gets focus (~50 KB gzipped), and a submit that arrives before it has loaded waits for it. `test/fixtures/phone-cases.json` holds the server's answers for 418 cases and the client matches every one.
+
 ## 0.3.2
 
 ### Fixed

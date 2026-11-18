@@ -231,11 +231,31 @@ The `validate` prop accepts multiple formats:
 
 ### Available Rules
 
-**Simple rules:** `required`, `email`, `url`, `active_url`, `boolean`, `accepted`, `numeric`, `integer`, `alpha`, `alpha_num`, `alpha_dash`, `date`, `ip`, `ipv4`, `ipv6`, `uuid`
+**Simple rules:** `required`, `email`, `url`, `active_url`, `boolean`, `accepted`, `numeric`, `integer`, `alpha`, `alpha_num`, `alpha_dash`, `date`, `ip`, `ipv4`, `ipv6`, `uuid`, `phone`
 
-**Parameterized rules:** `max[n]`, `min[n]`, `min_length[n]`, `max_length[n]`, `starts_with[str]`, `doesnt_start_with[str]`, `doesnt_end_with[str]`, `in[a,b,c]`, `not_in[a,b,c]`, `after[date]`, `before[date]`, `date_equals[date]`, `same[field]`, `gt[field]`, `gte[field]`, `lt[field]`, `lte[field]`, `regex[pattern]`, `not_regex[pattern]`
+**Parameterized rules:** `max[n]`, `min[n]`, `min_length[n]`, `max_length[n]`, `starts_with[str]`, `doesnt_start_with[str]`, `doesnt_end_with[str]`, `in[a,b,c]`, `not_in[a,b,c]`, `after[date]`, `before[date]`, `date_equals[date]`, `same[field]`, `gt[field]`, `gte[field]`, `lt[field]`, `lte[field]`, `regex[pattern]`, `not_regex[pattern]`, `phone[options]`
 
-This is exactly the set the server accepts. Any other rule name fails the form at init with `Unknown validation rule`.
+This is exactly the set the server accepts.
+
+#### Phone numbers
+
+`phone` checks real numbers against Google's numbering data (libphonenumber), on the server and in the browser:
+
+```astro
+<Field name="phone" type="tel" validate={{ phone: "Enter a valid number, starting with + and your country code" }} />
+<Field name="phone" type="tel" validate={{ "phone[za]": "Enter a South African number" }} />
+<Field name="phone" type="tel" validate={{ "phone[international,za]": "Enter a valid number" }} />
+<Field name="phone" type="tel" validate={{ "phone[mobile]": "Enter a mobile number" }} />
+```
+
+- `phone`: any country, written internationally (`+27 82 123 4567`).
+- `phone[za]`, `phone[za,gb]`: only these countries; local numbers (`082 123 4567`) are read as them.
+- `phone[international,za]`: local South African numbers, or any international one.
+- `phone[mobile]`, `phone[!mobile]`: allow or block a number type (`fixed_line`, `toll_free`, `voip`, ...).
+- `phone[lenient]`: check the length only, not the number ranges.
+- A field named `phone_country` (the phone field's name + `_country`) sets the country, or name another field: `phone[country]`.
+
+The browser check loads its data (~50 KB gzipped) the first time a phone field gets focus, so pages with no phone field download nothing. Any other rule name fails the form at init with `Unknown validation rule`.
 
 ### Client-Side Validation
 

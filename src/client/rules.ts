@@ -10,6 +10,8 @@
  * and left for the server to enforce.
  */
 
+import { checkPhone, phoneParser } from "./phone.ts";
+
 /** A field's current value: string, or string[] for checkbox groups / multi-selects */
 export type FieldValue = string | string[];
 
@@ -37,6 +39,9 @@ export function parseRuleAttr(attrName: string, attrValue: string): ParsedRule |
 }
 
 /**
+ * `phone` runs here once libphonenumber-js has loaded (see phone.ts); until
+ * then it is left to the server.
+ *
  * Rules that cannot be checked in the browser and are deferred to the server:
  * `active_url` needs a DNS lookup; `regex` / `not_regex` run with PHP regex
  * semantics. Every other rule the server accepts is implemented in CHECKS
@@ -100,7 +105,7 @@ function inList(param: string): string[] {
   return param.split(",").map((entry) => entry.trim());
 }
 
-type RuleCheck = (value: string, param: string, values: FormValues) => boolean;
+type RuleCheck = (value: string, param: string, values: FormValues, field: string) => boolean;
 
 /** Each check returns true when the value passes. Empty values are handled before dispatch. */
 const CHECKS: Record<string, RuleCheck> = {
@@ -125,6 +130,10 @@ const CHECKS: Record<string, RuleCheck> = {
   ipv4: (v) => IPV4.test(v.trim()),
   ipv6: (v) => IPV6.test(v.trim()),
   date: (v) => parseDate(v) !== null,
+  phone: (v, p, values, field) => {
+    const parse = phoneParser();
+    return parse ? checkPhone(parse, v, p || null, field, values) : true;
+  },
 
   max: (v, p) => NUMERIC.test(v.trim()) && Number.parseFloat(v) <= Number.parseFloat(p),
   min: (v, p) => NUMERIC.test(v.trim()) && Number.parseFloat(v) >= Number.parseFloat(p),
@@ -194,6 +203,7 @@ const MESSAGES: Record<string, (field: string, param: string) => string> = {
   ipv4: (f) => `The ${f} field must be a valid IPv4 address.`,
   ipv6: (f) => `The ${f} field must be a valid IPv6 address.`,
   date: (f) => `The ${f} field must be a valid date.`,
+  phone: (f) => `The ${f} field must be a valid phone number.`,
   max: (f, p) => `The ${f} field must not be greater than ${p}.`,
   min: (f, p) => `The ${f} field must be at least ${p}.`,
   min_length: (f, p) => `The ${f} field must be at least ${p} characters.`,
@@ -253,8 +263,8 @@ export function validateField(
     const items = Array.isArray(value) ? value : [value];
     const passes =
       rule.name === "accepted"
-        ? check(asString(Array.isArray(value) ? value[0] : value), "", values)
-        : items.every((item) => check(item, rule.param ?? "", values));
+        ? check(asString(Array.isArray(value) ? value[0] : value), "", values, field)
+        : items.every((item) => check(item, rule.param ?? "", values, field));
 
     if (!passes) return rule.message ?? defaultMessage(rule, field);
   }

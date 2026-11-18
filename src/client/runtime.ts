@@ -25,6 +25,7 @@ import {
   parseRuleAttr,
   validateField,
 } from "./rules.ts";
+import { loadPhoneParser, phoneSettled } from "./phone.ts";
 
 type FormControl = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 
@@ -251,6 +252,17 @@ function checkField(
   return error;
 }
 
+const hasPhoneRule = (entry: FieldEntry) => entry.rules.some((rule) => rule.name === "phone");
+
+/** Starts loading the phone data when a field with a `phone` rule gets focus. */
+function onFocusIn(event: FocusEvent): void {
+  const el = event.target;
+  if (!isFormControl(el) || phoneSettled()) return;
+  if (Array.from(el.attributes).some((attr) => /^sf-validate:phone(\[|$)/.test(attr.name))) {
+    void loadPhoneParser();
+  }
+}
+
 function onSubmit(event: Event): void {
   const form = event.target;
   if (!(form instanceof HTMLFormElement)) return;
@@ -258,6 +270,16 @@ function onSubmit(event: Event): void {
   if (!root) return;
 
   const fields = collectFields(form);
+
+  // The phone data loads on demand. If it isn't ready yet (Enter pressed
+  // straight after typing), hold the submit and send it again once it is.
+  if (!phoneSettled() && [...fields.values()].some(hasPhoneRule)) {
+    event.preventDefault();
+    event.stopPropagation();
+    void loadPhoneParser().then(() => form.requestSubmit());
+    return;
+  }
+
   const state = getFormState(form);
   state.submitted = true;
 
@@ -287,7 +309,14 @@ function onFocusOut(event: FocusEvent): void {
 
   const state = getFormState(el.form);
   state.touched.add(el.name);
-  checkField(root, collectFields(el.form), el.name);
+  const fields = collectFields(el.form);
+  const entry = fields.get(el.name);
+  if (entry && hasPhoneRule(entry) && !phoneSettled()) {
+    const form = el.form;
+    void loadPhoneParser().then(() => checkField(root, collectFields(form), entry.name));
+    return;
+  }
+  checkField(root, fields, el.name);
 }
 
 function onInput(event: Event): void {
@@ -320,6 +349,7 @@ export function initClientValidation(): void {
   window.__astroSnipformClientValidation = true;
 
   document.addEventListener("submit", onSubmit, true);
+  document.addEventListener("focusin", onFocusIn, true);
   document.addEventListener("focusout", onFocusOut, true);
   document.addEventListener("input", onInput, true);
   document.addEventListener("change", onInput, true);
